@@ -1,0 +1,145 @@
+/* ================================
+   FEATURES – LARGE TEXT & AIRY GRID
+   Auto-fit for any number of cards
+   ================================ */
+
+.section {
+  padding: 90px 12px 100px 12px;
+ background:
+    radial-gradient(1100px 520px at 18% 18%, rgba(37, 99, 235, 0.10), transparent 60%),
+    radial-gradient(900px 520px at 80% 25%, rgba(96, 165, 250, 0.12), transparent 55%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+}
+
+.container {
+  max-width: 1200px; /* rộng hơn chút */
+  margin: 0 auto;
+}
+
+/* ===== Section title ===== */
+.title {
+  text-align: center;
+  font-size: 32px;        /* 👈 to hơn */
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+/* ===== Grid ===== */
+.grid {
+  margin-top: 64px;       /* 👈 cách title xa hơn */
+  display: grid;
+  gap: 32px;              /* 👈 khoảng cách ô lớn hơn */
+
+  /* auto-fit cho 3 / 4 / 5 ô */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: stretch;
+}
+
+/* ===== Card ===== */
+.card {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 18px;    /* bo tròn hơn */
+  padding: 28px 28px 26px; /* 👈 padding lớn hơn */
+
+  box-shadow:
+    0 14px 32px rgba(15, 23, 42, 0.06),
+    0 4px 12px rgba(15, 23, 42, 0.04);
+
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 20px 44px rgba(15, 23, 42, 0.10),
+    0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+/* ===== Card title ===== */
+.cardTitle {
+  font-size: 18px;        /* 👈 to hơn */
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 14px;
+}
+
+/* ===== Card description / text ===== */
+.cardDesc {
+  font-size: 15px;        /* 👈 to hơn */
+  line-height: 1.65;
+  color: #475569;
+  margin: 0;
+}
+
+/* ===== List ===== */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listItem {
+  position: relative;
+  padding-left: 18px;
+  margin-top: 12px;       /* 👈 thoáng hơn */
+
+  font-size: 15px;        /* 👈 to hơn */
+  line-height: 1.6;
+  color: #475569;
+}
+
+.listItem::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: rgba(37, 99, 235, 0.95);
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* ===== Optional icon (nếu dùng) ===== */
+.icon {
+  width: 42px;            /* 👈 to hơn */
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 18px;
+  margin-bottom: 14px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .grid {
+    gap: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .section {
+    padding: 110px 18px;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .grid {
+    margin-top: 40px;
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 22px 20px;
+  }
+}
