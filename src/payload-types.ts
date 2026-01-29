@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    landingPage: LandingPage;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -78,6 +79,7 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    landingPage: LandingPageSelect<false> | LandingPageSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -161,6 +163,93 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "landingPage".
+ */
+export interface LandingPage {
+  id: number;
+  /**
+   * Internal title for admin reference
+   */
+  title: string;
+  hero: {
+    title: string;
+    subtitle: string;
+    description: string;
+    image: number | Media;
+    primaryCTA: {
+      label: string;
+      url: string;
+    };
+    secondaryCTA?: {
+      label?: string | null;
+      url?: string | null;
+    };
+  };
+  about: {
+    title: string;
+    content: string;
+    principles?:
+      | {
+          text: string;
+          id?: string | null;
+        }[]
+      | null;
+    outcomes?:
+      | {
+          text: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  howItWorks: {
+    title: string;
+    steps?:
+      | {
+          title: string;
+          description: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  features: {
+    title: string;
+    items?:
+      | {
+          featureTitle: string;
+          points?:
+            | {
+                text: string;
+                id?: string | null;
+              }[]
+            | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  whySamsam: {
+    title: string;
+    image?: (number | null) | Media;
+    reasons?:
+      | {
+          title: string;
+          description?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  finalCTA: {
+    title: string;
+    subtitle?: string | null;
+    primaryButtonLabel: string;
+    primaryButtonUrl: string;
+    secondaryButtonLabel?: string | null;
+    secondaryButtonUrl?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -190,6 +279,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'landingPage';
+        value: number | LandingPage;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -272,6 +365,105 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "landingPage_select".
+ */
+export interface LandingPageSelect<T extends boolean = true> {
+  title?: T;
+  hero?:
+    | T
+    | {
+        title?: T;
+        subtitle?: T;
+        description?: T;
+        image?: T;
+        primaryCTA?:
+          | T
+          | {
+              label?: T;
+              url?: T;
+            };
+        secondaryCTA?:
+          | T
+          | {
+              label?: T;
+              url?: T;
+            };
+      };
+  about?:
+    | T
+    | {
+        title?: T;
+        content?: T;
+        principles?:
+          | T
+          | {
+              text?: T;
+              id?: T;
+            };
+        outcomes?:
+          | T
+          | {
+              text?: T;
+              id?: T;
+            };
+      };
+  howItWorks?:
+    | T
+    | {
+        title?: T;
+        steps?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              id?: T;
+            };
+      };
+  features?:
+    | T
+    | {
+        title?: T;
+        items?:
+          | T
+          | {
+              featureTitle?: T;
+              points?:
+                | T
+                | {
+                    text?: T;
+                    id?: T;
+                  };
+              id?: T;
+            };
+      };
+  whySamsam?:
+    | T
+    | {
+        title?: T;
+        image?: T;
+        reasons?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              id?: T;
+            };
+      };
+  finalCTA?:
+    | T
+    | {
+        title?: T;
+        subtitle?: T;
+        primaryButtonLabel?: T;
+        primaryButtonUrl?: T;
+        secondaryButtonLabel?: T;
+        secondaryButtonUrl?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
