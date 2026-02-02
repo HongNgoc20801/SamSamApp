@@ -70,6 +70,8 @@ export interface Config {
     users: User;
     media: Media;
     landingPage: LandingPage;
+    families: Family;
+    familyInvites: FamilyInvite;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -80,6 +82,8 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     landingPage: LandingPageSelect<false> | LandingPageSelect<true>;
+    families: FamiliesSelect<false> | FamiliesSelect<true>;
+    familyInvites: FamilyInvitesSelect<false> | FamilyInvitesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -124,6 +128,14 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  role?: ('admin' | 'parent') | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  birthDate?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  gender?: ('male' | 'female' | 'other') | null;
+  familyRole?: ('mother' | 'father' | 'sibling' | 'other') | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -250,6 +262,32 @@ export interface LandingPage {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "families".
+ */
+export interface Family {
+  id: number;
+  createdBy: number | User;
+  members: (number | User)[];
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "familyInvites".
+ */
+export interface FamilyInvite {
+  id: number;
+  code: string;
+  family: number | Family;
+  createdBy: number | User;
+  expiresAt?: string | null;
+  usedBy?: (number | null) | User;
+  usedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -283,6 +321,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'landingPage';
         value: number | LandingPage;
+      } | null)
+    | ({
+        relationTo: 'families';
+        value: number | Family;
+      } | null)
+    | ({
+        relationTo: 'familyInvites';
+        value: number | FamilyInvite;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -331,6 +377,14 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  role?: T;
+  firstName?: T;
+  lastName?: T;
+  birthDate?: T;
+  phone?: T;
+  address?: T;
+  gender?: T;
+  familyRole?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -462,6 +516,30 @@ export interface LandingPageSelect<T extends boolean = true> {
         secondaryButtonLabel?: T;
         secondaryButtonUrl?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "families_select".
+ */
+export interface FamiliesSelect<T extends boolean = true> {
+  createdBy?: T;
+  members?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "familyInvites_select".
+ */
+export interface FamilyInvitesSelect<T extends boolean = true> {
+  code?: T;
+  family?: T;
+  createdBy?: T;
+  expiresAt?: T;
+  usedBy?: T;
+  usedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
