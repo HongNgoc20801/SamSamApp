@@ -11,8 +11,12 @@ export const LandingPage: CollectionConfig = {
     useAsTitle: "title",
   },
   access: {
-    read: () => true, 
-  },
+  read: () => true,
+  create: ({ req }) => !!req.user,
+  update: ({ req }) => !!req.user,
+  delete: ({ req }) => !!req.user,
+},
+
   fields: [
     {
       name: "title",

@@ -1,66 +1,57 @@
 'use client'
- 
-import { useEffect, useMemo, useState } from 'react'
+
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './register.module.css'
 import Brand from '../../components/Brand'
- 
-const AUTH_COLLECTION = 'users'
- 
+
+const AUTH_COLLECTION = 'customers'
+
+function cleanEmailInput(v: string) {
+  return v
+    .trim()
+    .toLowerCase()
+    .replace(/\u200B|\u200C|\u200D|\uFEFF/g, '')
+}
+
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
- 
+
 function isValidPhone(phone: string) {
-  // đơn giản: cho phép +, số, khoảng trắng
   return /^[+\d\s]{6,}$/.test(phone.trim())
 }
- 
+
 export default function RegisterPage() {
   const router = useRouter()
- 
+
   const API_BASE = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_PAYLOAD_URL
-    return base ? `${base}/api/${AUTH_COLLECTION}` : `/api/${AUTH_COLLECTION}`
+    const clean = base ? base.replace(/\/$/, '') : ''
+    return clean ? `${clean}/api/${AUTH_COLLECTION}` : `/api/${AUTH_COLLECTION}`
   }, [])
- 
+
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [birthDate, setBirthDate] = useState('') // yyyy-mm-dd
+  const [birthDate, setBirthDate] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [gender, setGender] = useState('')
   const [familyRole, setFamilyRole] = useState('')
   const [inviteCode, setInviteCode] = useState('')
- 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
- 
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
- const [success, setSuccess] = useState('')
 
-  // Nếu đã login rồi thì đi thẳng dashboard
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
-        if (!res.ok) return
-        const data = await res.json().catch(() => null)
-        if (data?.user) router.replace('/dashboard')
-      } catch {}
-    })()
-  }, [API_BASE, router])
- 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    setSuccess('thanh cong')
 
- 
-    const cleanEmail = email.trim()
- 
+    const cleanEmail = cleanEmailInput(email)
+
     if (
       !firstName.trim() ||
       !lastName.trim() ||
@@ -76,30 +67,29 @@ export default function RegisterPage() {
       setError('Vennligst fyll inn alle feltene.')
       return
     }
- 
+
     if (!isValidEmail(cleanEmail)) {
       setError('Ugyldig e-postadresse.')
       return
     }
- 
+
     if (!isValidPhone(phone)) {
       setError('Ugyldig telefonnummer.')
       return
     }
- 
+
     if (password.length < 6) {
       setError('Passord må være minst 6 tegn.')
       return
     }
- 
+
     if (password !== confirm) {
       setError('Passordene matcher ikke.')
       return
     }
- 
+
     setLoading(true)
     try {
-      // 1) Create user
       const createRes = await fetch(`${API_BASE}`, {
         method: 'POST',
         credentials: 'include',
@@ -116,89 +106,45 @@ export default function RegisterPage() {
           password,
         }),
       })
- 
-      const createData = await createRes.json().catch(() => ({} as any))
+
+      // IMPORTANT: đọc raw để thấy lỗi Payload trả về rõ hơn
+      const raw = await createRes.text()
+      let createData: any = {}
+      try { createData = JSON.parse(raw) } catch {}
+
       if (!createRes.ok) {
         const msg =
           createData?.message ||
           createData?.errors?.[0]?.message ||
+          raw ||
           'Kunne ikke opprette konto.'
         throw new Error(msg)
       }
- 
-      // 2) Auto-login (set cookie)
-      const loginRes = await fetch(`${API_BASE}/login`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password }),
-      })
- 
-      const loginData = await loginRes.json().catch(() => ({} as any))
-      if (!loginRes.ok) {
-        const msg =
-          loginData?.message ||
-          loginData?.errors?.[0]?.message ||
-          'Konto opprettet, men innlogging feilet. Prøv å logge inn.'
-        throw new Error(msg)
-      }
- 
-      // ✅ 3) JOIN / CREATE FAMILY (chỉ chạy sau khi login OK)
-      const base = process.env.NEXT_PUBLIC_PAYLOAD_URL
-        ? `${process.env.NEXT_PUBLIC_PAYLOAD_URL}`
-        : ''
- 
-      if (inviteCode.trim()) {
-        const joinRes = await fetch(`${base}/api/families/join`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: inviteCode.trim() }),
-        })
- 
-        if (!joinRes.ok) {
-          const j = await joinRes.json().catch(() => ({} as any))
-          throw new Error(j?.message || 'Ugyldig invitasjonskode.')
-        }
-      } else {
-        const createFamilyRes = await fetch(`${base}/api/families`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        })
- 
-        if (!createFamilyRes.ok) {
-          const j = await createFamilyRes.json().catch(() => ({} as any))
-          throw new Error(j?.message || 'Kunne ikke opprette familiegruppe.')
-        }
-      }
- 
-      //router.push('/dashboard')
-      setSuccess('Konto opprettet! Du blir sendt videre…')
-    setTimeout(() => {
-    router.push('/login')
-    }, 1200)
 
+      // lưu invite code để login join family sau
+      const code = inviteCode.trim()
+      if (code) sessionStorage.setItem('samsam_invite_code', code)
+      else sessionStorage.removeItem('samsam_invite_code')
 
+      // ✅ register xong -> đi login
+      router.push('/login?registered=1')
     } catch (err: any) {
       setError(err?.message || 'Noe gikk galt. Prøv igjen.')
     } finally {
       setLoading(false)
     }
   }
- 
+
   return (
     <main className={styles.bg}>
       <section className={styles.card} aria-label="Registrering">
-        {/* ✅ dùng chung Brand */}
         <div className={styles.brand} aria-label="SamSam">
           <Brand />
         </div>
- 
+
         <h1 className={styles.title}>Opprett konto</h1>
         <p className={styles.subtitle}>Lag en ny konto for å bruke SamSam.</p>
- 
+
         <form className={styles.form} onSubmit={handleSubmit} noValidate autoComplete="off">
           <div className={styles.grid2}>
             <div>
@@ -215,7 +161,7 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
- 
+
             <div>
               <label className={styles.label} htmlFor="lastName">
                 Etternavn
@@ -231,7 +177,7 @@ export default function RegisterPage() {
               </div>
             </div>
           </div>
- 
+
           <label className={styles.label} htmlFor="birthDate">
             Fødselsdato
           </label>
@@ -244,14 +190,13 @@ export default function RegisterPage() {
               disabled={loading}
             />
           </div>
- 
+
           <label className={styles.label} htmlFor="email">
             E-post
           </label>
           <div className={styles.field}>
             <input
               id="email"
-              name="samsam_email"
               type="email"
               autoComplete="off"
               value={email}
@@ -260,7 +205,7 @@ export default function RegisterPage() {
               placeholder="Din e-postadresse"
             />
           </div>
- 
+
           <label className={styles.label} htmlFor="phone">
             Telefonnummer
           </label>
@@ -273,7 +218,7 @@ export default function RegisterPage() {
               placeholder="+47 123 45 678"
             />
           </div>
- 
+
           <label className={styles.label} htmlFor="address">
             Adresse
           </label>
@@ -286,7 +231,7 @@ export default function RegisterPage() {
               placeholder="Gate, nummer, poststed"
             />
           </div>
- 
+
           <div className={styles.grid2}>
             <div>
               <label className={styles.label} htmlFor="gender">
@@ -306,7 +251,7 @@ export default function RegisterPage() {
                 </select>
               </div>
             </div>
- 
+
             <div>
               <label className={styles.label} htmlFor="familyRole">
                 Rolle i familien
@@ -327,7 +272,7 @@ export default function RegisterPage() {
               </div>
             </div>
           </div>
- 
+
           <label className={styles.label} htmlFor="inviteCode">
             Invitasjonskode (valgfritt)
           </label>
@@ -340,14 +285,13 @@ export default function RegisterPage() {
               placeholder="F.eks. A1B2C3D4E5"
             />
           </div>
- 
+
           <label className={styles.label} htmlFor="password">
             Passord
           </label>
           <div className={styles.field}>
             <input
               id="password"
-              name="samsam_password"
               type="password"
               autoComplete="new-password"
               value={password}
@@ -356,14 +300,13 @@ export default function RegisterPage() {
               placeholder="Skriv inn passord"
             />
           </div>
- 
+
           <label className={styles.label} htmlFor="confirm">
             Bekreft passord
           </label>
           <div className={styles.field}>
             <input
               id="confirm"
-              name="samsam_confirm"
               type="password"
               autoComplete="new-password"
               value={confirm}
@@ -372,15 +315,15 @@ export default function RegisterPage() {
               placeholder="Gjenta passord"
             />
           </div>
- 
+
           <button className={styles.primaryBtn} type="submit" disabled={loading}>
             {loading ? 'Oppretter…' : 'Opprett konto'}
           </button>
- 
+
           <div className={styles.divider} role="separator" aria-label="eller">
             <span>eller</span>
           </div>
- 
+
           <button
             className={styles.secondaryBtn}
             type="button"
@@ -389,17 +332,11 @@ export default function RegisterPage() {
           >
             Tilbake til Logg inn
           </button>
- 
+
           <p className={styles.error} role="alert" aria-live="polite">
             {error}
           </p>
-          {success && (
-        <p className={styles.success} role="status" aria-live="polite">
-            {success}
-        </p>
-        )}
-
-                </form>
+        </form>
       </section>
     </main>
   )

@@ -64,6 +64,7 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    customers: CustomerAuthOperations;
   };
   blocks: {};
   collections: {
@@ -71,7 +72,7 @@ export interface Config {
     media: Media;
     landingPage: LandingPage;
     families: Family;
-    familyInvites: FamilyInvite;
+    customers: Customer;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -83,7 +84,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     landingPage: LandingPageSelect<false> | LandingPageSelect<true>;
     families: FamiliesSelect<false> | FamiliesSelect<true>;
-    familyInvites: FamilyInvitesSelect<false> | FamilyInvitesSelect<true>;
+    customers: CustomersSelect<false> | CustomersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -96,9 +97,13 @@ export interface Config {
   globals: {};
   globalsSelect: {};
   locale: null;
-  user: User & {
-    collection: 'users';
-  };
+  user:
+    | (User & {
+        collection: 'users';
+      })
+    | (Customer & {
+        collection: 'customers';
+      });
   jobs: {
     tasks: unknown;
     workflows: unknown;
@@ -122,20 +127,30 @@ export interface UserAuthOperations {
     password: string;
   };
 }
+export interface CustomerAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
   id: number;
-  role?: ('admin' | 'parent') | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  birthDate?: string | null;
-  phone?: string | null;
-  address?: string | null;
-  gender?: ('male' | 'female' | 'other') | null;
-  familyRole?: ('mother' | 'father' | 'sibling' | 'other') | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -266,25 +281,43 @@ export interface LandingPage {
  */
 export interface Family {
   id: number;
-  createdBy: number | User;
-  members: (number | User)[];
+  name?: string | null;
+  inviteCode: string;
+  members: (number | Customer)[];
   updatedAt: string;
   createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "familyInvites".
+ * via the `definition` "customers".
  */
-export interface FamilyInvite {
+export interface Customer {
   id: number;
-  code: string;
-  family: number | Family;
-  createdBy: number | User;
-  expiresAt?: string | null;
-  usedBy?: (number | null) | User;
-  usedAt?: string | null;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  phone: string;
+  address: string;
+  gender: 'male' | 'female' | 'other';
+  familyRole: 'father' | 'mother' | 'sibling' | 'other';
+  family?: (number | null) | Family;
   updatedAt: string;
   createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -327,14 +360,19 @@ export interface PayloadLockedDocument {
         value: number | Family;
       } | null)
     | ({
-        relationTo: 'familyInvites';
-        value: number | FamilyInvite;
+        relationTo: 'customers';
+        value: number | Customer;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'customers';
+        value: number | Customer;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -344,10 +382,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: number;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'customers';
+        value: number | Customer;
+      };
   key?: string | null;
   value?:
     | {
@@ -377,14 +420,6 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
-  role?: T;
-  firstName?: T;
-  lastName?: T;
-  birthDate?: T;
-  phone?: T;
-  address?: T;
-  gender?: T;
-  familyRole?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -524,24 +559,41 @@ export interface LandingPageSelect<T extends boolean = true> {
  * via the `definition` "families_select".
  */
 export interface FamiliesSelect<T extends boolean = true> {
-  createdBy?: T;
+  name?: T;
+  inviteCode?: T;
   members?: T;
   updatedAt?: T;
   createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "familyInvites_select".
+ * via the `definition` "customers_select".
  */
-export interface FamilyInvitesSelect<T extends boolean = true> {
-  code?: T;
+export interface CustomersSelect<T extends boolean = true> {
+  firstName?: T;
+  lastName?: T;
+  birthDate?: T;
+  phone?: T;
+  address?: T;
+  gender?: T;
+  familyRole?: T;
   family?: T;
-  createdBy?: T;
-  expiresAt?: T;
-  usedBy?: T;
-  usedAt?: T;
   updatedAt?: T;
   createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

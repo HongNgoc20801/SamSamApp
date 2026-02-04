@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation'
 import styles from './login.module.css'
 import Brand from '../../components/Brand'
 
-const AUTH_COLLECTION = 'users' // đổi nếu collection auth của bạn khác (vd: 'accounts')
+const AUTH_COLLECTION = 'customers'
 
+function cleanEmailInput(v: string) {
+  return v.trim().toLowerCase().replace(/\u200B|\u200C|\u200D|\uFEFF/g, '')
+}
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
@@ -15,10 +18,15 @@ export default function LoginPage() {
   const router = useRouter()
 
   const API_BASE = useMemo(() => {
-    // Nếu Payload chạy chung origin với Next => '/api/...'
-    // Nếu chạy khác domain/port => set NEXT_PUBLIC_PAYLOAD_URL (vd http://localhost:3000)
     const base = process.env.NEXT_PUBLIC_PAYLOAD_URL
-    return base ? `${base}/api/${AUTH_COLLECTION}` : `/api/${AUTH_COLLECTION}`
+    const clean = base ? base.replace(/\/$/, '') : ''
+    return clean ? `${clean}/api/${AUTH_COLLECTION}` : `/api/${AUTH_COLLECTION}`
+  }, [])
+
+  const ORIGIN = useMemo(() => {
+    const base = process.env.NEXT_PUBLIC_PAYLOAD_URL
+    const clean = base ? base.replace(/\/$/, '') : ''
+    return clean || '' // cùng origin thì để ''
   }, [])
 
   const [email, setEmail] = useState('')
@@ -27,34 +35,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // ✅ Prefill chỉ khi đã tick "Huske meg" trước đó
+  // Prefill (chỉ email)
   useEffect(() => {
     const remembered = localStorage.getItem('samsam_remember') === '1'
     if (!remembered) return
-
     setEmail(localStorage.getItem('samsam_email') ?? '')
-    // ⚠️ DEMO-ONLY: lưu và tự điền password (không khuyến nghị)
-    setPassword(localStorage.getItem('samsam_password') ?? '')
     setRemember(true)
   }, [])
 
-  // ✅ Nếu đã login thì redirect
+  // Nếu đã login thì redirect
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetch(`${API_BASE}/me`, {
-          method: 'GET',
-          credentials: 'include',
-        })
+        const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
         if (!res.ok) return
-
         const data = await res.json().catch(() => null)
-        if (data?.user) {
-          router.replace('/dashboard')
-        }
-      } catch {
-        // ignore
-      }
+        if (data?.user) router.replace('/dashboard')
+      } catch {}
     })()
   }, [API_BASE, router])
 
@@ -62,7 +59,7 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
 
-    const cleanEmail = email.trim()
+    const cleanEmail = cleanEmailInput(email)
 
     if (!cleanEmail || !password) {
       setError('Vennligst fyll inn e-post og passord.')
@@ -75,6 +72,7 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
+      // 1) Login
       const res = await fetch(`${API_BASE}/login`, {
         method: 'POST',
         credentials: 'include',
@@ -84,23 +82,45 @@ export default function LoginPage() {
 
       const data = await res.json().catch(() => ({} as any))
       if (!res.ok) {
-        const msg =
-          data?.message ||
-          data?.errors?.[0]?.message ||
-          'Feil e-post eller passord.'
-        throw new Error(msg)
+        throw new Error(
+          data?.message || data?.errors?.[0]?.message || 'Feil e-post eller passord.'
+        )
       }
 
-      // ✅ Lưu / xóa theo "Huske meg"
+      // 2) Remember email only
       if (remember) {
         localStorage.setItem('samsam_remember', '1')
         localStorage.setItem('samsam_email', cleanEmail)
-        // ⚠️ DEMO-ONLY
-        localStorage.setItem('samsam_password', password)
       } else {
         localStorage.removeItem('samsam_remember')
         localStorage.removeItem('samsam_email')
-        localStorage.removeItem('samsam_password')
+      }
+
+      // 3) lấy user từ response login nếu có, fallback /me
+      let user = data?.user
+      if (!user?.id) {
+        const meRes = await fetch(`${API_BASE}/me`, { credentials: 'include' })
+        const meData = await meRes.json().catch(() => null)
+        user = meData?.user
+      }
+      if (!user?.id) throw new Error('Innlogging OK, men kunne ikke hente brukerinfo (/me).')
+
+      // 4) Join family nếu có inviteCode lưu
+      const savedInviteCode = (sessionStorage.getItem('samsam_invite_code') || '').trim()
+      if (savedInviteCode) {
+        const joinRes = await fetch(`${ORIGIN}/api/families/join`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: savedInviteCode }),
+        })
+
+        // ✅ nếu join fail: báo lỗi nhưng vẫn cho vào dashboard (tuỳ bạn)
+        if (!joinRes.ok) {
+          // Bạn có thể đổi thành: throw new Error(...) nếu muốn chặn
+          console.warn('Join family failed')
+        }
+        sessionStorage.removeItem('samsam_invite_code')
       }
 
       router.push('/dashboard')
@@ -118,12 +138,12 @@ export default function LoginPage() {
         <div className={styles.brand} aria-label="SamSam">
           <Brand />
         </div>
-
+ 
         <h1 className={styles.title}>Logg inn</h1>
         <p className={styles.subtitle}>
           Velkommen tilbake. Logg inn for å se kalender, avtaler og oppgaver.
         </p>
-
+ 
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
           <label className={styles.label} htmlFor="email">
             E-post
@@ -152,7 +172,7 @@ export default function LoginPage() {
               required
             />
           </div>
-
+ 
           <label className={styles.label} htmlFor="password">
             Passord
           </label>
@@ -181,7 +201,7 @@ export default function LoginPage() {
               minLength={6}
             />
           </div>
-
+ 
           <div className={styles.row}>
             <label className={styles.remember}>
               <input
@@ -190,7 +210,7 @@ export default function LoginPage() {
                 onChange={(e) => {
                   const checked = e.target.checked
                   setRemember(checked)
-
+ 
                   // ✅ bỏ tick thì xóa sạch, lần sau trống
                   if (!checked) {
                     localStorage.removeItem('samsam_remember')
@@ -204,7 +224,7 @@ export default function LoginPage() {
               />
               <span>Huske meg</span>
             </label>
-
+ 
             <button
               type="button"
               className={styles.linkBtn}
@@ -216,15 +236,15 @@ export default function LoginPage() {
               Glemt passord?
             </button>
           </div>
-
+ 
           <button className={styles.primaryBtn} type="submit" disabled={loading}>
             {loading ? 'Logger inn…' : 'Logg inn'}
           </button>
-
+ 
           <div className={styles.divider} role="separator" aria-label="eller">
             <span>eller</span>
           </div>
-
+ 
           <button
             className={styles.secondaryBtn}
             type="button"
@@ -233,11 +253,11 @@ export default function LoginPage() {
           >
             Opprett konto
           </button>
-
+ 
           <p className={styles.note}>
             Har du fått en invitasjon? Lim inn koden for å bli med i familiegruppen.
           </p>
-
+ 
           <p className={styles.error} role="alert" aria-live="polite">
             {error}
           </p>
